@@ -1,0 +1,138 @@
+@startuml DocFlow — Diagrama de Flujo de Usuario
+
+skinparam backgroundColor #FAFAFA
+skinparam DefaultFontName Inter
+skinparam DefaultFontSize 12
+skinparam ArrowColor #52525B
+skinparam ActivityBorderColor #52525B
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderThickness 1.5
+skinparam ConditionStyle diamond
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #52525B
+  FontColor #09090B
+  StartColor #09090B
+  EndColor #09090B
+}
+
+skinparam partition {
+  BackgroundColor #F4F4F5
+  BorderColor #D4D4D8
+  FontColor #3F3F46
+  FontStyle bold
+}
+
+title DocFlow — Flujo completo de usuario\n
+
+|#EFF6FF|Proveedor|
+start
+
+:Accede a la URL principal (/);
+:**Paso 1** — Ingresa datos del proveedor\n(nombre de empresa, email);
+
+if (¿Datos válidos?) then (Sí)
+else (No)
+  :Muestra error de validación;
+  stop
+endif
+
+:Avanza al **Paso 2** — Ítems y documentos;
+
+repeat
+  :Completa una fila de la tabla\n(OC, posición, código, lote,\ndescripción, cantidad, UM, fecha);
+  :Hace clic en **Cargar** para adjuntar PDFs\n(certificado de calidad, ficha técnica,\nhoja de seguridad, otro);
+  :Arrastra o selecciona los archivos PDF;
+backward :+ Agregar fila;
+repeat while (¿Más ítems?) is (Sí) not (No, listo)
+
+:Presiona **Revisar envío**;
+:Revisa el resumen en **Paso 3**;
+
+if (¿Todo correcto?) then (Sí)
+  :Presiona **Enviar documentos**;
+  :Sistema crea un **folio único** por ítem\ny sube los archivos a Storage;
+  :Pantalla de confirmación con:\n- QR descargable por folio\n- Enlace público por folio\n- Botón Compartir info;
+  :Descarga o imprime el QR\npara pegarlo en el material;
+  stop
+else (No, corregir)
+  :Vuelve al Paso 2 a corregir;
+endif
+
+|#F0FDF4|Usuario Interno|
+
+start
+
+:Accede a /login;
+:Ingresa email y contraseña;
+
+if (¿Credenciales correctas?) then (Sí)
+else (No)
+  :Muestra error;
+  stop
+endif
+
+:**Dashboard** — Vista general;
+note right
+  Tarjetas: Total / Completos /
+  Incompletos / Pendientes
+end note
+
+fork
+  :Busca o filtra folios\n(por OC, material, lote, proveedor);
+fork again
+  :Selecciona filtro de estado\n(Todos / Pendiente / Completo / Incompleto);
+end fork
+
+:Tabla de folios paginada;
+
+if (¿Acción en folio?) then (Ver detalle)
+  :Abre modal de **Detalle del folio**;
+  fork
+    :Cambia estado\n(Completo / Incompleto / Pendiente);
+  fork again
+    :Descarga o elimina documentos;
+  fork again
+    :Carga nuevos documentos;
+  fork again
+    :Edita observaciones internas;
+  end fork
+else if (QR)
+  :Abre modal del **código QR**;
+  if (¿Qué hacer?) then (Descargar)
+    :Descarga PNG del QR;
+  else (Imprimir)
+    :Abre ventana de impresión\ncon QR y datos del material;
+  endif
+else if (Compartir)
+  :Copia al portapapeles texto\nformateado + enlace público;
+else (Copiar link)
+  :Copia solo la URL pública;
+endif
+
+:Continúa revisando otros folios;
+
+stop
+
+|#FFF7ED|Visitante (QR o enlace)|
+
+start
+
+:Escanea QR con celular\no recibe enlace compartido;
+:Accede a /folio/{token};
+
+if (¿Folio existe?) then (Sí)
+  :**Vista pública** del folio;
+  :Ve información del material\n(código, lote, OC, proveedor, estado);
+  :Ve lista de documentos adjuntos;
+  if (¿Necesita el archivo?) then (Sí)
+    :Descarga el PDF;
+  endif
+  stop
+else (No)
+  :Muestra página de error\n"Folio no encontrado";
+  stop
+endif
+
+@enduml
